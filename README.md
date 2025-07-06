@@ -14,6 +14,14 @@ A web-based Docker container management tool built with Go that allows you to re
 
 ## 🚀 Quick Start
 
+## Təsvir
+
+### 1.1 Şəkil
+![1.1 Şəkil](img/1.1.png)
+
+### 1.2 Şəkil
+![1.2 Şəkil](img/1.2.png)
+
 ### Prerequisites
 
 - Docker installed
@@ -184,4 +192,3 @@ remote-docker-manager/
 3. Commit your changes
 4. Push to the branch
 5. Open a Pull Request
-
