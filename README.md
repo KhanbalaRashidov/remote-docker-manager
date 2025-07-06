@@ -14,13 +14,13 @@ A web-based Docker container management tool built with Go that allows you to re
 
 ## 🚀 Quick Start
 
-## Təsvir
+## Screenshots
 
-### 1.1 Şəkil
-![1.1 Şəkil](img/1.1.png)
+### Figure 1.1
+![Figure 1.1](img/1.1.png)
 
-### 1.2 Şəkil
-![1.2 Şəkil](img/1.2.png)
+### Figure 1.2
+![Figure 1.2](img/1.2.png)
 
 ### Prerequisites
 
