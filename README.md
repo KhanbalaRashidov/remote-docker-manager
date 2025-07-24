@@ -93,20 +93,22 @@ go run main.go
         - ⏸️ **Stop** running containers
         - 🔄 **Restart** containers
         - 🗑️ **Remove** containers
+        - 📝 **Log** containers
     - Click "🔄 Refresh" to update container list
 
 ## 📋 API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | Web interface |
-| `GET` | `/health` | Health check |
+| Method | Endpoint | Description                 |
+|--------|----------|-----------------------------|
+| `GET`  | `/` | Web interface               |
+| `GET`  | `/health` | Health check                |
 | `POST` | `/api/config` | Configure server connection |
-| `GET` | `/api/containers` | List all containers |
-| `POST` | `/api/container/{id}/start` | Start a container |
-| `POST` | `/api/container/{id}/stop` | Stop a container |
-| `POST` | `/api/container/{id}/restart` | Restart a container |
-| `POST` | `/api/container/{id}/remove` | Remove a container |
+| `GET`  | `/api/containers` | List all containers         |
+| `POST` | `/api/container/{id}/start` | Start a container           |
+| `POST` | `/api/container/{id}/stop` | Stop a container            |
+| `POST` | `/api/container/{id}/restart` | Restart a container         |
+| `POST` | `/api/container/{id}/remove` | Remove a container          |
+| `GET`  | `/api/logs/{id}` | Log a container             |
 
 ## 🐳 Docker Configuration
 
