@@ -30,7 +30,9 @@ type Container struct {
 	Created string `json:"created"`
 	Ports   string `json:"ports"`
 }
-
+type ContainerLog struct {
+	Log string `json:"log"`
+}
 type DockerManager struct {
 	config *ServerConfig
 }
@@ -72,7 +74,39 @@ func (dm *DockerManager) executeSSHCommand(command string) (string, error) {
 	}
 
 	output := stdout.String()
+	fmt.Println("OUTPUT:", output)
 	return output, nil
+}
+func (dm *DockerManager) LogContainers(containerId string) ([]ContainerLog, error) {
+	_, err := dm.executeSSHCommand("which docker")
+	if err != nil {
+		return []ContainerLog{}, fmt.Errorf("Docker is not installed or not in PATH: %v", err)
+	}
+	formattedOutput, err := dm.executeSSHCommand(fmt.Sprintf("docker logs  --tail 20 %s 2>&1 | grep -v '^$'", containerId))
+	if err != nil {
+		return []ContainerLog{}, fmt.Errorf("Docker ps formatted command failed: %v", err)
+	}
+
+	lines := strings.Split(formattedOutput, "\n")
+	var containers []ContainerLog
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		parts := line
+		if len(parts) >= 1 {
+			container := ContainerLog{
+				Log: parts,
+			}
+
+			containers = append(containers, container)
+		}
+	}
+
+	return containers, nil
 }
 
 func (dm *DockerManager) GetContainers() ([]Container, error) {
@@ -314,6 +348,7 @@ const htmlTemplate = `
 
             containers.forEach(container => {
                 const row = document.createElement('tr');
+				row.id=container.id ;
                 row.innerHTML = 
                     '<td>' + container.id + '</td>' +
                     '<td>' + container.name + '</td>' +
@@ -326,11 +361,50 @@ const htmlTemplate = `
                         '<button class="btn btn-warning" onclick="containerAction(\'' + container.id + '\', \'stop\')">⏸️ Stop</button>' +
                         '<button class="btn btn-primary" onclick="containerAction(\'' + container.id + '\', \'restart\')">🔄 Restart</button>' +
                         '<button class="btn btn-danger" onclick="containerAction(\'' + container.id + '\', \'remove\')">🗑️ Remove</button>' +
+                        '<button class="btn btn-secondary" onclick="logAction(\'' + container.id + '\')">📝 Log</button>' +
                     '</td>';
                 tbody.appendChild(row);
             });
         }
 
+  		function logAction(containerID) {
+			const existingRow = document.getElementById('log'+containerID);
+			 if (existingRow) {
+				existingRow.style.display = existingRow.style.display === 'none' ? 'table-row' : 'none';
+			} else {
+					fetch('/api/logs/' + containerID , {
+						method: 'GET'
+					})
+					.then(response => response.json())
+					.then(data => {
+            		 updateLogTable(data.containers || [],containerID) 
+
+					})
+					.catch(err => showMessage('Action failed: ' + err, 'error'));
+					
+			}
+        }
+
+		function updateLogTable(containers,containerID) {
+					const newRow = document.createElement('tr');
+	                newRow.id='log'+containerID
+					const td1 = document.createElement('td');
+					td1.colSpan = 7; // O el número de columnas que tenga la tabla
+   					// Crear lista y li
+					const ul = document.createElement('ul');
+					ul.style.fontSize = 'small';
+				 containers.forEach(container => {
+							console.log(container);
+							const row = document.getElementById(containerID);
+						
+							const li = document.createElement('li');
+							li.textContent = container.log; // o lo que quieras mostrar
+							ul.appendChild(li);
+							td1.appendChild(ul);
+							newRow.appendChild(td1);
+							row.parentNode.insertBefore(newRow, row.nextSibling);
+						})
+		}
         function containerAction(containerID, action) {
             if (action === 'remove' && !confirm('Are you sure you want to remove this container?')) {
                 return;
@@ -445,6 +519,30 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func logsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	containerId := vars["id"]
+	containers, err := dockerManager.LogContainers(containerId)
+	if err != nil {
+		log.Printf("ERROR: Failed to get containers: %v", err)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":    false,
+			"error":      err.Error(),
+			"containers": []Container{},
+		})
+		return
+	}
+
+	log.Printf("INFO: Successfully fetched %d containers", len(containers))
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":    true,
+		"containers": containers,
+		"count":      len(containers),
+	})
+}
+
 func containersHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -508,6 +606,7 @@ func containerActionHandler(w http.ResponseWriter, r *http.Request) {
 		err = dockerManager.RestartContainer(containerID)
 	case "remove":
 		err = dockerManager.RemoveContainer(containerID)
+
 	default:
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
@@ -537,6 +636,7 @@ func main() {
 	r.HandleFunc("/health", healthHandler)
 	r.HandleFunc("/api/config", configHandler)
 	r.HandleFunc("/api/containers", containersHandler)
+	r.HandleFunc("/api/logs/{id}", logsHandler)
 	r.HandleFunc("/api/container/{id}/{action}", containerActionHandler)
 
 	r.Use(loggingMiddleware)
@@ -553,6 +653,7 @@ func main() {
 	fmt.Println("   POST /api/config - Server configuration")
 	fmt.Println("   GET  /api/containers - List containers")
 	fmt.Println("   POST /api/container/{id}/{action} - Container actions")
+	fmt.Println("   POST /api/logs/{id} - Logs container")
 
 	log.Fatal(http.ListenAndServe(port, r))
 }
